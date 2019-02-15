@@ -125,6 +125,7 @@
         <module>presto-product-tests-launcher</module>
         <module>presto-prometheus</module>
         <module>presto-proxy</module>
+        <module>presto-ranger-plugin</module>
         <module>presto-raptor-legacy</module>
         <module>presto-rcfile</module>
         <module>presto-record-decoder</module>
@@ -347,6 +348,12 @@
             <dependency>
                 <groupId>io.prestosql</groupId>
                 <artifactId>presto-product-tests</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>io.prestosql</groupId>
+                <artifactId>presto-ranger-plugin</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

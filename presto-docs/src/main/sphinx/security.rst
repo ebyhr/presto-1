@@ -13,6 +13,7 @@ Security
     security/user-mapping
     security/tls
     security/built-in-system-access-control
+    security/ranger
     security/internal-communication
     security/secrets
 
