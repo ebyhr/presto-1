@@ -57,12 +57,13 @@ public class UserGroupsRangerClient
 
     public UserGroupsRangerClient(Map<String, String> configuration)
     {
-        this.restClient = new RangerRESTClient();
-        this.isKerberos =
-                KERBEROS.equalsIgnoreCase(RangerConfiguration.getInstance().get("hadoop.security.authentication"));
+        restClient = new RangerRESTClient();
+        isKerberos = KERBEROS.equalsIgnoreCase(RangerConfiguration.getInstance().get("hadoop.security.authentication"));
+        restClient.setUrl("http://mino-master001-iu-dev-jp2v-prod.lineinfra.com:6080");
         restClient.setBasicAuthInfo(configuration.get("ranger.username"), configuration.get("ranger.password"));
         int cacheExpiry = Integer.parseInt(configuration.getOrDefault("user-group-cache-expiry-ttl", "30"));
-        this.userGroupCache = CacheBuilder.newBuilder().expireAfterWrite(cacheExpiry, TimeUnit.SECONDS)
+        userGroupCache = CacheBuilder.newBuilder()
+                .expireAfterWrite(cacheExpiry, TimeUnit.SECONDS)
                 .build(new CacheLoader<String, Set<String>>()
                 {
                     @Override
@@ -93,6 +94,7 @@ public class UserGroupsRangerClient
 
     private ClientResponse makeUserInfoRequest(String user)
     {
+        log.info(restClient.getUrl());
         WebResource resource = restClient.getResource(
                 String.format(GET_USER_INFO, UriComponent.contextualEncode(user, UriComponent.Type.PATH_SEGMENT)));
         return resource.accept(RangerRESTUtils.REST_MIME_TYPE_JSON).type(RangerRESTUtils.REST_MIME_TYPE_JSON)
@@ -108,8 +110,7 @@ public class UserGroupsRangerClient
                 return Optional.of(entity.getId());
             }
             String errorMsg = response.hasEntity() ? response.getEntity(String.class) : null;
-            log.error("Error getting user id for  userName=" + userName + ", response=" + response.getStatus()
-                    + ", errorMsg=" + errorMsg);
+            log.error("Error getting user id for  userName=%s, response=%s, errorMsg=%s", userName, response.getStatus(), errorMsg);
             return Optional.empty();
         }
         catch (Throwable t) {
@@ -125,9 +126,7 @@ public class UserGroupsRangerClient
             if (user != null && isKerberos) {
                 return user.doAs((PrivilegedAction<ClientResponse>) () -> f.get());
             }
-            else {
-                return f.get();
-            }
+            return f.get();
         }
         catch (IOException e) {
             log.error("Error performing request.", e);
@@ -151,13 +150,11 @@ public class UserGroupsRangerClient
                 return entity.getvXGroups().stream().map(RangerGroup::getName).collect(Collectors.toSet());
             }
             String errorMsg = response.hasEntity() ? response.getEntity(String.class) : null;
-            log.error(
-                    "Error getting groups for  userId=" + userId + ", response=" + response.getStatus() + ", errorMsg="
-                            + errorMsg);
+            log.error("Error getting groups for  userId=%s, response=%s, errorMsg=%s", userId, response.getStatus(), errorMsg);
             return ImmutableSet.of();
         }
         catch (Throwable t) {
-            log.error(t, "Error getting groups for user id: " + userId);
+            log.error(t, "Error getting groups for user id: %s", userId);
             throw t;
         }
     }

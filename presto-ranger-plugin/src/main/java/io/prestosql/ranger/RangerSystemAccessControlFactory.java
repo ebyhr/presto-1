@@ -13,9 +13,7 @@
  */
 package io.prestosql.ranger;
 
-import io.airlift.log.Logger;
 import io.prestosql.spi.classloader.ThreadContextClassLoader;
-import io.prestosql.spi.connector.classloader.ClassLoaderSafeConnectorSystemAccessControl;
 import io.prestosql.spi.security.SystemAccessControl;
 import io.prestosql.spi.security.SystemAccessControlFactory;
 
@@ -26,7 +24,6 @@ import static java.util.Objects.requireNonNull;
 public class RangerSystemAccessControlFactory
         implements SystemAccessControlFactory
 {
-    private static final Logger log = Logger.get(RangerSystemAccessControlFactory.class);
     protected static final String RANGER_ACCESS_CONTROL = "ranger-access-control";
 
     private final ClassLoader classLoader;
@@ -45,8 +42,15 @@ public class RangerSystemAccessControlFactory
     @Override
     public SystemAccessControl create(Map<String, String> config)
     {
+//        try (ThreadContextClassLoader ignored = new ThreadContextClassLoader(classLoader)) {
+//            return new ClassLoaderSafeConnectorSystemAccessControl(new RangerPluginInitializer().initRanger(config), classLoader);
+//        }
+
+        // Throw exception
+//        return new RangerPluginInitializer().initRanger(config);
+
         try (ThreadContextClassLoader ignored = new ThreadContextClassLoader(classLoader)) {
-            return new ClassLoaderSafeConnectorSystemAccessControl(new RangerPluginInitializer().initRanger(config), classLoader);
+            return new RangerPluginInitializer().initRanger(config);
         }
     }
 }

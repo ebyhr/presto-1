@@ -15,6 +15,7 @@ package io.prestosql.ranger.groups;
 
 import java.util.Set;
 
+@FunctionalInterface
 public interface UserGroups
 {
     Set<String> getUserGroups(String username);

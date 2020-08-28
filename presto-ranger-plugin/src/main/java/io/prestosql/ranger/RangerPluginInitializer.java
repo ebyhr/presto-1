@@ -124,8 +124,7 @@ public class RangerPluginInitializer
         MiscUtil.authWithKerberos(keytab, principal, null);
     }
 
-    private static PrestoAuthorizer getPrestoAuthorizer(Map<String, String> configuration, List<String> serviceTypes,
-            List<String> appId)
+    private static PrestoAuthorizer getPrestoAuthorizer(Map<String, String> configuration, List<String> serviceTypes, List<String> appId)
     {
         final Map<String, RangerPrestoPlugin> plugins = new HashMap<>();
 

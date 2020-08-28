@@ -39,7 +39,7 @@ public class PrestoAuthorizer
     {
         List<RangerPrestoResource> rangerPrestoResources = new ArrayList<>();
         for (RangerPrestoResource rangerPrestoResource : resources) {
-            if (checkPermisionForResource(rangerPrestoResource, identity, PrestoAccessType.USE)) {
+            if (checkPermissionForResource(rangerPrestoResource, identity, PrestoAccessType.USE)) {
                 rangerPrestoResources.add(rangerPrestoResource);
             }
         }
@@ -48,30 +48,30 @@ public class PrestoAuthorizer
 
     public boolean canSeeResource(RangerPrestoResource resource, Identity identity)
     {
-        return checkPermisionForResource(resource, identity, PrestoAccessType.USE);
+        return checkPermissionForResource(resource, identity, PrestoAccessType.USE);
     }
 
     public boolean canCreateResource(RangerPrestoResource resource, Identity identity)
     {
-        return checkPermisionForResource(resource, identity, PrestoAccessType.CREATE);
+        return checkPermissionForResource(resource, identity, PrestoAccessType.CREATE);
     }
 
     public boolean canDropResource(RangerPrestoResource resource, Identity identity)
     {
-        return checkPermisionForResource(resource, identity, PrestoAccessType.DROP);
+        return checkPermissionForResource(resource, identity, PrestoAccessType.DROP);
     }
 
     public boolean canUpdateResource(RangerPrestoResource resource, Identity identity)
     {
-        return checkPermisionForResource(resource, identity, PrestoAccessType.UPDATE);
+        return checkPermissionForResource(resource, identity, PrestoAccessType.UPDATE);
     }
 
     public boolean canSelectResource(RangerPrestoResource resource, Identity identity)
     {
-        return checkPermisionForResource(resource, identity, PrestoAccessType.SELECT);
+        return checkPermissionForResource(resource, identity, PrestoAccessType.SELECT);
     }
 
-    private boolean checkPermisionForResource(RangerPrestoResource resource, Identity identity, PrestoAccessType prestoAccessType)
+    private boolean checkPermissionForResource(RangerPrestoResource resource, Identity identity, PrestoAccessType prestoAccessType)
     {
         Optional<RangerAccessResult> rangerPrestoPlugin = checkPermission(resource, identity, prestoAccessType);
         if (rangerPrestoPlugin.isPresent()) {
@@ -80,9 +80,8 @@ public class PrestoAuthorizer
             }
             return rangerPrestoPlugin.get().getIsAllowed();
         }
-        else {
-            return true;
-        }
+
+        return true;
     }
 
     private Optional<RangerAccessResult> checkPermission(RangerPrestoResource resource, Identity identity, PrestoAccessType accessType)
