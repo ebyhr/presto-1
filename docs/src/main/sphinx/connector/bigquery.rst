@@ -102,7 +102,8 @@ Reading from views
 ^^^^^^^^^^^^^^^^^^
 
 The connector has a preliminary support for reading from `BigQuery views
-<https://cloud.google.com/bigquery/docs/views-intro>`_. Please note there are
+<https://cloud.google.com/bigquery/docs/views-intro>`_ and `BigQuery materialized views
+<https://cloud.google.com/bigquery/docs/materialized-views-intro>`_. Please note there are
 a few caveats:
 
 * BigQuery views are not materialized by default, which means that the

@@ -16,6 +16,7 @@ package io.trino.plugin.bigquery;
 import com.google.cloud.bigquery.BigQueryException;
 import com.google.cloud.bigquery.DatasetId;
 import com.google.cloud.bigquery.Field;
+import com.google.cloud.bigquery.MaterializedViewDefinition;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardTableDefinition;
 import com.google.cloud.bigquery.Table;
@@ -62,6 +63,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
+import static com.google.cloud.bigquery.TableDefinition.Type.MATERIALIZED_VIEW;
 import static com.google.cloud.bigquery.TableDefinition.Type.TABLE;
 import static com.google.cloud.bigquery.TableDefinition.Type.VIEW;
 import static com.google.common.collect.ImmutableList.toImmutableList;
@@ -144,7 +146,7 @@ public class BigQueryMetadata
 
         ImmutableList.Builder<SchemaTableName> tableNames = ImmutableList.builder();
         for (String remoteSchemaName : remoteSchemaNames) {
-            for (Table table : bigQueryClient.listTables(DatasetId.of(projectId, remoteSchemaName), TABLE, VIEW)) {
+            for (Table table : bigQueryClient.listTables(DatasetId.of(projectId, remoteSchemaName), TABLE, VIEW, MATERIALIZED_VIEW)) {
                 // filter ambiguous tables
                 boolean isAmbiguous = bigQueryClient.toRemoteTable(projectId, remoteSchemaName, table.getTableId().getTable().toLowerCase(ENGLISH))
                         .filter(RemoteDatabaseObject::isAmbiguous)
@@ -227,7 +229,7 @@ public class BigQueryMetadata
                 .map(RemoteDatabaseObject::getOnlyRemoteName)
                 .orElseThrow(() -> new TableNotFoundException(viewDefinitionTableName));
         TableInfo tableInfo = bigQueryClient.getTable(TableId.of(projectId, remoteSchemaName, remoteTableName));
-        if (tableInfo == null || !(tableInfo.getDefinition() instanceof ViewDefinition)) {
+        if (tableInfo == null || (!(tableInfo.getDefinition() instanceof ViewDefinition) && !(tableInfo.getDefinition() instanceof MaterializedViewDefinition))) {
             throw new TableNotFoundException(viewDefinitionTableName);
         }
 
@@ -235,10 +237,20 @@ public class BigQueryMetadata
         List<Type> types = columns.stream()
                 .map(ColumnMetadata::getType)
                 .collect(toImmutableList());
-        Optional<String> query = Optional.ofNullable(((ViewDefinition) tableInfo.getDefinition()).getQuery());
+        Optional<String> query = Optional.ofNullable(getViewDefinition(tableInfo.getDefinition()));
         Iterable<List<Object>> propertyValues = ImmutableList.of(ImmutableList.of(query.orElse("NULL")));
 
         return Optional.of(createSystemTable(new ConnectorTableMetadata(sourceTableName, columns), constraint -> new InMemoryRecordSet(types, propertyValues).cursor()));
+    }
+
+    private String getViewDefinition(TableDefinition tableDefinition) {
+        if (tableDefinition instanceof ViewDefinition) {
+            return ((ViewDefinition) tableDefinition).getQuery();
+        }
+        if (tableDefinition instanceof MaterializedViewDefinition) {
+            return ((MaterializedViewDefinition) tableDefinition).getQuery();
+        }
+        throw new IllegalArgumentException("Unsupported table definition type: " + tableDefinition.getType());
     }
 
     @Override

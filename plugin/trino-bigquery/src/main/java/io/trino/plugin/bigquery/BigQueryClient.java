@@ -43,6 +43,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+import static com.google.cloud.bigquery.TableDefinition.Type.MATERIALIZED_VIEW;
 import static com.google.cloud.bigquery.TableDefinition.Type.TABLE;
 import static com.google.cloud.bigquery.TableDefinition.Type.VIEW;
 import static com.google.common.base.Verify.verify;
@@ -130,7 +131,7 @@ class BigQueryClient
 
         // cache miss, reload the cache
         Map<TableId, Optional<RemoteDatabaseObject>> mapping = new HashMap<>();
-        for (Table table : listTables(DatasetId.of(projectId, remoteDatasetName), TABLE, VIEW)) {
+        for (Table table : listTables(DatasetId.of(projectId, remoteDatasetName), TABLE, VIEW, MATERIALIZED_VIEW)) {
             mapping.merge(
                     tableIdToLowerCase(table.getTableId()),
                     Optional.of(RemoteDatabaseObject.of(table.getTableId().getTable())),

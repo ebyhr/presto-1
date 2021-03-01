@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
 
+import static com.google.cloud.bigquery.TableDefinition.Type.MATERIALIZED_VIEW;
 import static com.google.cloud.bigquery.TableDefinition.Type.TABLE;
 import static com.google.cloud.bigquery.TableDefinition.Type.VIEW;
 import static com.google.common.collect.ImmutableList.toImmutableList;
@@ -133,7 +134,7 @@ public class BigQuerySplitManager
                 if (tableInfo.getDefinition().getType() == TABLE) {
                     numberOfRows = tableInfo.getNumRows().longValue();
                 }
-                else if (tableInfo.getDefinition().getType() == VIEW) {
+                else if (tableInfo.getDefinition().getType() == VIEW || tableInfo.getDefinition().getType() == MATERIALIZED_VIEW) {
                     String sql = bigQueryClient.selectSql(tableId, "COUNT(*)");
                     TableResult result = bigQueryClient.query(sql);
                     numberOfRows = result.iterateAll().iterator().next().get(0).getLongValue();

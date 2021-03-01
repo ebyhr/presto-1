@@ -293,6 +293,35 @@ public class TestBigQueryIntegrationSmokeTest
         onBigQuery(format("DROP VIEW %s.%s", schemaName, viewName));
     }
 
+    @Test
+    public void testMaterializedView()
+    {
+        String schemaName = "test";
+        String tableName = "materialized_table";
+        String materializedViewName = "materialized_view";
+
+        onBigQuery(format("DROP TABLE IF EXISTS %s.%s", schemaName, tableName));
+        onBigQuery(format("DROP VIEW IF EXISTS %s.%s", schemaName, materializedViewName));
+        onBigQuery(format("CREATE TABLE %s.%s (a INT64)", schemaName, tableName));
+        onBigQuery(format("INSERT INTO %s.%s VALUES (1), (5), (10)", schemaName, tableName));
+        onBigQuery(format("CREATE MATERIALIZED VIEW %s.%s AS SELECT max(a) AS c1 FROM %s.%s", schemaName, materializedViewName, schemaName, tableName));
+
+        assertQuery(
+                format("SELECT * FROM %s.%s", schemaName, materializedViewName),
+                "VALUES (10)");
+
+        assertQuery(
+                format("SELECT count(*) FROM %s.%s", schemaName, materializedViewName),
+                "VALUES (1)");
+
+        assertEquals(
+                computeScalar(format("SELECT * FROM %s.\"%s$view_definition\"", schemaName, materializedViewName)),
+                format("SELECT max(a) AS c1 FROM %s.%s", schemaName, tableName));
+
+        onBigQuery(format("DROP TABLE %s.%s", schemaName, tableName));
+        onBigQuery(format("DROP MATERIALIZED VIEW %s.%s", schemaName, materializedViewName));
+    }
+
     @Override
     public void testShowCreateTable()
     {
