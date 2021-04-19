@@ -21,6 +21,7 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 
 import javax.inject.Inject;
 
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 
@@ -28,6 +29,7 @@ import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.joining;
 import static org.apache.kafka.clients.CommonClientConfigs.SECURITY_PROTOCOL_CONFIG;
 import static org.apache.kafka.clients.consumer.ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG;
+import static org.apache.kafka.clients.consumer.ConsumerConfig.CLIENT_ID_CONFIG;
 import static org.apache.kafka.clients.consumer.ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG;
 import static org.apache.kafka.clients.consumer.ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG;
 import static org.apache.kafka.clients.consumer.ConsumerConfig.RECEIVE_BUFFER_CONFIG;
@@ -37,6 +39,7 @@ public class PlainTextKafkaConsumerFactory
         implements KafkaConsumerFactory
 {
     private final Set<HostAddress> nodes;
+    private final Optional<String> clientId;
     private final DataSize kafkaBufferSize;
     private final SecurityProtocol securityProtocol;
 
@@ -49,6 +52,7 @@ public class PlainTextKafkaConsumerFactory
         requireNonNull(securityConfig, "securityConfig is null");
 
         nodes = kafkaConfig.getNodes();
+        clientId = kafkaConfig.getClientId();
         kafkaBufferSize = kafkaConfig.getKafkaBufferSize();
         securityProtocol = securityConfig.getSecurityProtocol();
     }
@@ -60,6 +64,7 @@ public class PlainTextKafkaConsumerFactory
         properties.setProperty(BOOTSTRAP_SERVERS_CONFIG, nodes.stream()
                 .map(HostAddress::toString)
                 .collect(joining(",")));
+        clientId.ifPresent(id -> properties.setProperty(CLIENT_ID_CONFIG, id));
         properties.setProperty(KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
         properties.setProperty(VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
         properties.setProperty(RECEIVE_BUFFER_CONFIG, Long.toString(kafkaBufferSize.toBytes()));

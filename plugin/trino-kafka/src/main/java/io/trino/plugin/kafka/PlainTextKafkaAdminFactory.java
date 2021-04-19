@@ -20,18 +20,21 @@ import org.apache.kafka.common.security.auth.SecurityProtocol;
 
 import javax.inject.Inject;
 
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.joining;
 import static org.apache.kafka.clients.CommonClientConfigs.SECURITY_PROTOCOL_CONFIG;
+import static org.apache.kafka.clients.admin.AdminClientConfig.CLIENT_ID_CONFIG;
 import static org.apache.kafka.clients.consumer.ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG;
 
 public class PlainTextKafkaAdminFactory
         implements KafkaAdminFactory
 {
     private final Set<HostAddress> nodes;
+    private final Optional<String> clientId;
     private final SecurityProtocol securityProtocol;
 
     @Inject
@@ -43,6 +46,7 @@ public class PlainTextKafkaAdminFactory
         requireNonNull(securityConfig, "securityConfig is null");
 
         nodes = kafkaConfig.getNodes();
+        clientId = kafkaConfig.getClientId();
         securityProtocol = securityConfig.getSecurityProtocol();
     }
 
@@ -53,6 +57,7 @@ public class PlainTextKafkaAdminFactory
         properties.setProperty(BOOTSTRAP_SERVERS_CONFIG, nodes.stream()
                 .map(HostAddress::toString)
                 .collect(joining(",")));
+        clientId.ifPresent(id -> properties.setProperty(CLIENT_ID_CONFIG, id));
         properties.setProperty(SECURITY_PROTOCOL_CONFIG, securityProtocol.name());
         return properties;
     }

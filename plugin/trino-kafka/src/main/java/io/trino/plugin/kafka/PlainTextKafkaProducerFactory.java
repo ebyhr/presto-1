@@ -20,6 +20,7 @@ import org.apache.kafka.common.serialization.ByteArraySerializer;
 
 import javax.inject.Inject;
 
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 
@@ -28,6 +29,7 @@ import static java.util.stream.Collectors.joining;
 import static org.apache.kafka.clients.CommonClientConfigs.SECURITY_PROTOCOL_CONFIG;
 import static org.apache.kafka.clients.consumer.ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG;
 import static org.apache.kafka.clients.producer.ProducerConfig.ACKS_CONFIG;
+import static org.apache.kafka.clients.producer.ProducerConfig.CLIENT_ID_CONFIG;
 import static org.apache.kafka.clients.producer.ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG;
 import static org.apache.kafka.clients.producer.ProducerConfig.LINGER_MS_CONFIG;
 import static org.apache.kafka.clients.producer.ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG;
@@ -36,6 +38,7 @@ public class PlainTextKafkaProducerFactory
         implements KafkaProducerFactory
 {
     private final Set<HostAddress> nodes;
+    private final Optional<String> clientId;
     private final SecurityProtocol securityProtocol;
 
     @Inject
@@ -45,6 +48,7 @@ public class PlainTextKafkaProducerFactory
         requireNonNull(securityConfig, "securityConfig is null");
 
         nodes = kafkaConfig.getNodes();
+        clientId = kafkaConfig.getClientId();
         securityProtocol = securityConfig.getSecurityProtocol();
     }
 
@@ -55,6 +59,7 @@ public class PlainTextKafkaProducerFactory
         properties.setProperty(BOOTSTRAP_SERVERS_CONFIG, nodes.stream()
                 .map(HostAddress::toString)
                 .collect(joining(",")));
+        clientId.ifPresent(id -> properties.setProperty(CLIENT_ID_CONFIG, id));
         properties.setProperty(KEY_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
         properties.setProperty(VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
         properties.setProperty(ACKS_CONFIG, "all");

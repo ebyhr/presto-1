@@ -30,6 +30,7 @@ public class TestKafkaConfig
     {
         assertRecordedDefaults(recordDefaults(KafkaConfig.class)
                 .setNodes("")
+                .setClientId(null)
                 .setKafkaBufferSize("64kB")
                 .setDefaultSchema("default")
                 .setTableDescriptionSupplier(FileTableDescriptionSupplier.NAME)
@@ -45,6 +46,7 @@ public class TestKafkaConfig
                 .put("kafka.default-schema", "kafka")
                 .put("kafka.table-description-supplier", "test")
                 .put("kafka.nodes", "localhost:12345,localhost:23456")
+                .put("kafka.client-id", "trino-connector")
                 .put("kafka.buffer-size", "1MB")
                 .put("kafka.hide-internal-columns", "false")
                 .put("kafka.messages-per-split", "1")
@@ -55,6 +57,7 @@ public class TestKafkaConfig
                 .setDefaultSchema("kafka")
                 .setTableDescriptionSupplier("test")
                 .setNodes("localhost:12345, localhost:23456")
+                .setClientId("trino-connector")
                 .setKafkaBufferSize("1MB")
                 .setHideInternalColumns(false)
                 .setMessagesPerSplit(1)

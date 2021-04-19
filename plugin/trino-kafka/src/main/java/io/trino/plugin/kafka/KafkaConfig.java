@@ -27,6 +27,7 @@ import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.StreamSupport;
 
@@ -38,6 +39,7 @@ public class KafkaConfig
     private static final int KAFKA_DEFAULT_PORT = 9092;
 
     private Set<HostAddress> nodes = ImmutableSet.of();
+    private String clientId;
     private DataSize kafkaBufferSize = DataSize.of(64, Unit.KILOBYTE);
     private String defaultSchema = "default";
     private boolean hideInternalColumns = true;
@@ -56,6 +58,19 @@ public class KafkaConfig
     public KafkaConfig setNodes(String nodes)
     {
         this.nodes = (nodes == null) ? null : parseNodes(nodes);
+        return this;
+    }
+
+    public Optional<String> getClientId()
+    {
+        return Optional.ofNullable(clientId);
+    }
+
+    @Config("kafka.client-id")
+    @ConfigDescription("An optional identifier of a client")
+    public KafkaConfig setClientId(String clientId)
+    {
+        this.clientId = clientId;
         return this;
     }
 
