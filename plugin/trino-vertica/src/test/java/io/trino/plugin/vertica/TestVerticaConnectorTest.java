@@ -11,16 +11,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package io.trino.plugin.vertica;
 
 import com.google.common.collect.ImmutableMap;
 import io.trino.Session;
-import io.trino.testing.AbstractTestDistributedQueries;
+import io.trino.plugin.jdbc.BaseJdbcConnectorTest;
 import io.trino.testing.MaterializedResult;
 import io.trino.testing.QueryRunner;
-import io.trino.testing.sql.SqlExecutor;
+import io.trino.testing.TestingConnectorBehavior;
 import io.trino.testing.sql.TestTable;
-import io.trino.tpch.TpchTable;
 import org.testng.annotations.Test;
 
 import java.util.Optional;
@@ -28,12 +28,12 @@ import java.util.Optional;
 import static io.trino.plugin.vertica.VerticaQueryRunner.createVerticaQueryRunner;
 import static io.trino.spi.type.VarcharType.VARCHAR;
 import static io.trino.testing.MaterializedResult.resultBuilder;
+import static io.trino.testing.assertions.Assert.assertEquals;
 import static io.trino.testing.sql.TestTable.randomTableSuffix;
-import static java.lang.String.format;
-import static org.testng.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
-public class TestVerticaDistributedQueries
-        extends AbstractTestDistributedQueries
+public class TestVerticaConnectorTest
+        extends BaseJdbcConnectorTest
 {
     protected TestingVerticaServer verticaServer;
 
@@ -41,107 +41,34 @@ public class TestVerticaDistributedQueries
     protected QueryRunner createQueryRunner()
             throws Exception
     {
-        verticaServer = new TestingVerticaServer();
-        closeAfterClass(() -> {
-            verticaServer.close();
-            verticaServer = null;
-        });
+        verticaServer = closeAfterClass(new TestingVerticaServer());
         return createVerticaQueryRunner(
                 verticaServer,
                 ImmutableMap.of(),
                 ImmutableMap.of(),
-                TpchTable.getTables());
+                REQUIRED_TPCH_TABLES);
     }
 
     @Override
-    protected boolean supportsDelete()
+    protected boolean hasBehavior(TestingConnectorBehavior connectorBehavior)
     {
-        return false;
-    }
+        switch (connectorBehavior) {
+            case SUPPORTS_TOPN_PUSHDOWN:
+                return false;
 
-    @Override
-    protected boolean supportsViews()
-    {
-        return false;
-    }
+            case SUPPORTS_RENAME_TABLE_ACROSS_SCHEMAS:
+                return false;
 
-    @Override
-    protected boolean supportsArrays()
-    {
-        return false;
-    }
+            case SUPPORTS_COMMENT_ON_TABLE:
+            case SUPPORTS_COMMENT_ON_COLUMN:
+                return false;
 
-    @Override
-    protected boolean supportsCommentOnTable()
-    {
-        return false;
-    }
+            case SUPPORTS_ARRAY:
+                return false;
 
-    @Override
-    protected boolean supportsCommentOnColumn()
-    {
-        return false;
-    }
-
-    @Override
-    protected TestTable createTableWithDefaultColumns()
-    {
-        return new TestTable(
-                createJdbcSqlExecutor(),
-                "tpch.table",
-                "(col_required BIGINT NOT NULL," +
-                        "col_nullable BIGINT," +
-                        "col_default BIGINT DEFAULT 43," +
-                        "col_nonnull_default BIGINT NOT NULL DEFAULT 42," +
-                        "col_required2 BIGINT NOT NULL)");
-    }
-
-    @Test
-    @Override
-    public void testDropColumn()
-    {
-        String tableName = "test_drop_column_" + randomTableSuffix();
-        assertUpdate("CREATE TABLE " + tableName + " AS SELECT 123 x, 456 y, 111 a", 1);
-
-        assertQueryFails("ALTER TABLE " + tableName + " DROP COLUMN x", "This connector does not support dropping columns");
-
-        assertUpdate("DROP TABLE " + tableName);
-    }
-
-    @Test
-    @Override
-    public void testShowColumns()
-    {
-        MaterializedResult actual = computeActual("SHOW COLUMNS FROM orders");
-
-        // shippriority column's type is BIGINT, not INTEGER
-        MaterializedResult expectedUnparametrizedVarchar = resultBuilder(getSession(), VARCHAR, VARCHAR, VARCHAR, VARCHAR)
-                .row("orderkey", "bigint", "", "")
-                .row("custkey", "bigint", "", "")
-                .row("orderstatus", "varchar", "", "")
-                .row("totalprice", "double", "", "")
-                .row("orderdate", "date", "", "")
-                .row("orderpriority", "varchar", "", "")
-                .row("clerk", "varchar", "", "")
-                .row("shippriority", "bigint", "", "")
-                .row("comment", "varchar", "", "")
-                .build();
-
-        MaterializedResult expectedParametrizedVarchar = resultBuilder(getSession(), VARCHAR, VARCHAR, VARCHAR, VARCHAR)
-                .row("orderkey", "bigint", "", "")
-                .row("custkey", "bigint", "", "")
-                .row("orderstatus", "varchar(1)", "", "")
-                .row("totalprice", "double", "", "")
-                .row("orderdate", "date", "", "")
-                .row("orderpriority", "varchar(15)", "", "")
-                .row("clerk", "varchar(15)", "", "")
-                .row("shippriority", "bigint", "", "")
-                .row("comment", "varchar(79)", "", "")
-                .build();
-
-        // Until we migrate all connectors to parametrized varchar we check two options
-        assertTrue(actual.equals(expectedParametrizedVarchar) || actual.equals(expectedUnparametrizedVarchar),
-                format("%s does not match neither of %s and %s", actual, expectedParametrizedVarchar, expectedUnparametrizedVarchar));
+            default:
+                return super.hasBehavior(connectorBehavior);
+        }
     }
 
     @Test
@@ -219,6 +146,88 @@ public class TestVerticaDistributedQueries
     }
 
     @Override
+    protected TestTable createTableWithDefaultColumns()
+    {
+        return new TestTable(
+                this::execute,
+                "tpch.table",
+                "(col_required BIGINT NOT NULL," +
+                        "col_nullable BIGINT," +
+                        "col_default BIGINT DEFAULT 43," +
+                        "col_nonnull_default BIGINT NOT NULL DEFAULT 42," +
+                        "col_required2 BIGINT NOT NULL)");
+    }
+
+    @Test
+    public void testDescribeTable()
+    {
+        // shippriority column's type is BIGINT, not INTEGER
+        MaterializedResult expectedColumns = MaterializedResult.resultBuilder(getQueryRunner().getDefaultSession(), VARCHAR, VARCHAR, VARCHAR, VARCHAR)
+                .row("orderkey", "bigint", "", "")
+                .row("custkey", "bigint", "", "")
+                .row("orderstatus", "varchar(1)", "", "")
+                .row("totalprice", "double", "", "")
+                .row("orderdate", "date", "", "")
+                .row("orderpriority", "varchar(15)", "", "")
+                .row("clerk", "varchar(15)", "", "")
+                .row("shippriority", "bigint", "", "")
+                .row("comment", "varchar(79)", "", "")
+                .build();
+        MaterializedResult actualColumns = computeActual("DESCRIBE orders");
+        assertEquals(actualColumns, expectedColumns);
+    }
+
+    @Override
+    public void testShowCreateTable()
+    {
+        // shippriority column's type is BIGINT, not INTEGER
+        assertThat(computeActual("SHOW CREATE TABLE orders").getOnlyValue())
+                .isEqualTo("CREATE TABLE vertica.tpch.orders (\n" +
+                        "   orderkey bigint,\n" +
+                        "   custkey bigint,\n" +
+                        "   orderstatus varchar(1),\n" +
+                        "   totalprice double,\n" +
+                        "   orderdate date,\n" +
+                        "   orderpriority varchar(15),\n" +
+                        "   clerk varchar(15),\n" +
+                        "   shippriority bigint,\n" +
+                        "   comment varchar(79)\n" +
+                        ")");
+    }
+
+    @Test
+    @Override
+    public void testShowColumns()
+    {
+        // shippriority column's type is BIGINT, not INTEGER
+        MaterializedResult actual = computeActual("SHOW COLUMNS FROM orders");
+        MaterializedResult expected = resultBuilder(getSession(), VARCHAR, VARCHAR, VARCHAR, VARCHAR)
+                .row("orderkey", "bigint", "", "")
+                .row("custkey", "bigint", "", "")
+                .row("orderstatus", "varchar(1)", "", "")
+                .row("totalprice", "double", "", "")
+                .row("orderdate", "date", "", "")
+                .row("orderpriority", "varchar(15)", "", "")
+                .row("clerk", "varchar(15)", "", "")
+                .row("shippriority", "bigint", "", "")
+                .row("comment", "varchar(79)", "", "")
+                .build();
+        assertEquals(actual, expected);
+    }
+
+    @Test
+    @Override
+    public void testDropColumn()
+    {
+        String tableName = "test_drop_column_" + randomTableSuffix();
+        assertUpdate("CREATE TABLE " + tableName + " AS SELECT 123 x, 456 y, 111 a", 1);
+
+        assertQueryFails("ALTER TABLE " + tableName + " DROP COLUMN x", "This connector does not support dropping columns");
+
+        assertUpdate("DROP TABLE " + tableName);
+    }
+
+    @Override
     protected Optional<DataMappingTestSetup> filterDataMappingSmokeTestData(DataMappingTestSetup dataMappingTestSetup)
     {
         String typeName = dataMappingTestSetup.getTrinoTypeName();
@@ -238,8 +247,8 @@ public class TestVerticaDistributedQueries
         return Optional.of(dataMappingTestSetup);
     }
 
-    protected SqlExecutor createJdbcSqlExecutor()
+    private void execute(String sql)
     {
-        return verticaServer::execute;
+        verticaServer.execute(sql);
     }
 }

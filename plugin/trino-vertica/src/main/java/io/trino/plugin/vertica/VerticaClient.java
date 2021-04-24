@@ -87,6 +87,8 @@ import static java.util.Locale.ENGLISH;
 public class VerticaClient
         extends BaseJdbcClient
 {
+    private static final int MAX_SUPPORTED_TEMPORAL_PRECISION = 8;
+
     @Inject
     public VerticaClient(BaseJdbcConfig config, @StatsCollecting ConnectionFactory connectionFactory)
     {
@@ -133,6 +135,7 @@ public class VerticaClient
             case Types.CHAR:
                 return Optional.of(charColumnMapping(createCharType(typeHandle.getRequiredColumnSize()), false));
             case Types.VARCHAR:
+            case Types.LONGVARCHAR:
                 return Optional.of(varcharColumnMapping(createVarcharType(typeHandle.getRequiredColumnSize()), false));
             case Types.DATE:
                 return Optional.of(dateColumnMapping());
@@ -178,18 +181,18 @@ public class VerticaClient
         }
         if (type instanceof CharType) {
             int length = ((CharType) type).getLength();
-            checkArgument(length <= 65000, "Varchar length is greater than 65,000");
+            checkArgument(length <= 65000, "Char length is greater than 65,000");
             return WriteMapping.sliceMapping("char(" + length + ")", charWriteFunction());
         }
         if (type instanceof VarcharType) {
             VarcharType varcharType = (VarcharType) type;
             String dataType;
             if (varcharType.isUnbounded()) {
-                dataType = "varchar";
+                dataType = "long varchar";
             }
             else {
-                checkArgument(varcharType.getBoundedLength() <= 65000, "Varchar length is greater than 65,000");
-                dataType = "varchar(" + varcharType.getBoundedLength() + ")";
+                checkArgument(varcharType.getBoundedLength() <= 32_000_000, "Varchar length is greater than 32,000,000");
+                dataType = "long varchar(" + varcharType.getBoundedLength() + ")";
             }
             return WriteMapping.sliceMapping(dataType, varcharWriteFunction());
         }
@@ -212,7 +215,7 @@ public class VerticaClient
     protected void renameTable(ConnectorSession session, String catalogName, String schemaName, String tableName, SchemaTableName newTable)
     {
         if (!schemaName.equals(newTable.getSchemaName())) {
-            throw new TrinoException(NOT_SUPPORTED, "Table rename across schemas is not supported");
+            throw new TrinoException(NOT_SUPPORTED, "This connector does not support renaming tables across schemas");
         }
 
         try (Connection connection = connectionFactory.openConnection(session)) {

@@ -118,7 +118,7 @@ public class TestVerticaTypeMapping
                 .addRoundTrip("integer", "123456789", BIGINT, "BIGINT '123456789'")
                 .addRoundTrip("smallint", "32456", BIGINT, "BIGINT '32456'")
                 .addRoundTrip("tinyint", "5", BIGINT, "BIGINT '5'")
-                .execute(getQueryRunner(), prestoCreateAsSelect("test_basic_types"));
+                .execute(getQueryRunner(), trinoCreateAsSelect("test_basic_types"));
     }
 
     @Test
@@ -133,22 +133,29 @@ public class TestVerticaTypeMapping
                 .addRoundTrip("char(4)", "'😂'", createCharType(4), "CAST('😂' AS char(4))")
                 .addRoundTrip("char(77)", "'Ну, погоди!'", createCharType(77), "CAST('Ну, погоди!' AS char(77))")
                 .execute(getQueryRunner(), verticaCreateAndInsert("tpch.test_char"))
-                .execute(getQueryRunner(), prestoCreateAsSelect("test_char"));
+                .execute(getQueryRunner(), trinoCreateAsSelect("test_char"));
     }
 
     @Test
     public void testVarchar()
     {
         SqlDataTypeTest.create()
-                .addRoundTrip("varchar", "'text_default'", createVarcharType(80), "CAST('text_default' AS varchar(80))")
                 .addRoundTrip("varchar(10)", "'text_a'", createVarcharType(10), "CAST('text_a' AS varchar(10))")
                 .addRoundTrip("varchar(255)", "'text_b'", createVarcharType(255), "CAST('text_b' AS varchar(255))")
                 .addRoundTrip("varchar(15)", "'攻殻機動隊'", createVarcharType(15), "CAST('攻殻機動隊' AS varchar(15))")
                 .addRoundTrip("varchar(32)", "'攻殻機動隊'", createVarcharType(32), "CAST('攻殻機動隊' AS varchar(32))")
                 .addRoundTrip("varchar(4)", "'😂'", createVarcharType(4), "CAST('😂' AS varchar(4))")
                 .addRoundTrip("varchar(77)", "'Ну, погоди!'", createVarcharType(77), "CAST('Ну, погоди!' AS varchar(77))")
-                .execute(getQueryRunner(), verticaCreateAndInsert("tpch.test_char"))
-                .execute(getQueryRunner(), prestoCreateAsSelect("test_char"));
+                .execute(getQueryRunner(), verticaCreateAndInsert("tpch.test_varchar"))
+                .execute(getQueryRunner(), trinoCreateAsSelect("test_varchar"));
+
+        SqlDataTypeTest.create()
+                .addRoundTrip("varchar", "'text_default'", createVarcharType(80), "CAST('text_default' AS varchar(80))")
+                .execute(getQueryRunner(), verticaCreateAndInsert("tpch.test_default_varchar"));
+
+        SqlDataTypeTest.create()
+                .addRoundTrip("varchar", "'text_default'", createVarcharType(1048576), "CAST('text_default' AS varchar(1048576))")
+                .execute(getQueryRunner(), trinoCreateAsSelect("test_default_varchar"));
     }
 
     @Test
@@ -172,7 +179,7 @@ public class TestVerticaTypeMapping
                 .addRoundTrip("decimal(38, 0)", "CAST('27182818284590452353602874713526624977' AS decimal(38, 0))", createDecimalType(38, 0), "CAST('27182818284590452353602874713526624977' AS decimal(38, 0))")
                 .addRoundTrip("decimal(38, 0)", "CAST('-27182818284590452353602874713526624977' AS decimal(38, 0))", createDecimalType(38, 0), "CAST('-27182818284590452353602874713526624977' AS decimal(38, 0))")
                 .execute(getQueryRunner(), verticaCreateAndInsert("tpch.test_decimal"))
-                .execute(getQueryRunner(), prestoCreateAsSelect("test_decimal"));
+                .execute(getQueryRunner(), trinoCreateAsSelect("test_decimal"));
     }
 
     @Test
@@ -372,9 +379,9 @@ public class TestVerticaTypeMapping
                     .setTimeZoneKey(TimeZoneKey.getTimeZoneKey(timeZoneId))
                     .build();
             testCases.execute(getQueryRunner(), session, verticaCreateAndInsert("tpch.test_date"));
-            testCases.execute(getQueryRunner(), session, prestoCreateAsSelect(session, "test_date"));
-            testCases.execute(getQueryRunner(), session, prestoCreateAsSelect(getSession(), "test_date"));
-            testCases.execute(getQueryRunner(), session, prestoCreateAndInsert(session, "test_date"));
+            testCases.execute(getQueryRunner(), session, trinoCreateAsSelect(session, "test_date"));
+            testCases.execute(getQueryRunner(), session, trinoCreateAsSelect(getSession(), "test_date"));
+            testCases.execute(getQueryRunner(), session, trinoCreateAndInsert(session, "test_date"));
         }
     }
 
@@ -397,7 +404,7 @@ public class TestVerticaTypeMapping
                 .addRoundTrip("real", "nan()", DOUBLE, "CAST(nan() AS double)")
                 .addRoundTrip("real", "-infinity()", DOUBLE, "CAST(-infinity() AS double)")
                 .addRoundTrip("real", "+infinity()", DOUBLE, "CAST(+infinity() AS double)")
-                .execute(getQueryRunner(), prestoCreateAsSelect("presto_test_real"));
+                .execute(getQueryRunner(), trinoCreateAsSelect("presto_test_real"));
     }
 
     @Test
@@ -417,7 +424,7 @@ public class TestVerticaTypeMapping
                 .addRoundTrip("double", "nan()", DOUBLE, "nan()")
                 .addRoundTrip("double", "+infinity()", DOUBLE, "+infinity()")
                 .addRoundTrip("double", "-infinity()", DOUBLE, "-infinity()")
-                .execute(getQueryRunner(), prestoCreateAsSelect("presto_test_double"));
+                .execute(getQueryRunner(), trinoCreateAsSelect("presto_test_double"));
     }
 
     private void testUnsupportedDataTypeAsIgnored(String dataTypeName, String databaseValue)
@@ -509,17 +516,17 @@ public class TestVerticaTypeMapping
                 .build();
     }
 
-    private DataSetup prestoCreateAsSelect(String tableNamePrefix)
+    private DataSetup trinoCreateAsSelect(String tableNamePrefix)
     {
-        return prestoCreateAsSelect(getSession(), tableNamePrefix);
+        return trinoCreateAsSelect(getSession(), tableNamePrefix);
     }
 
-    private DataSetup prestoCreateAsSelect(Session session, String tableNamePrefix)
+    private DataSetup trinoCreateAsSelect(Session session, String tableNamePrefix)
     {
         return new CreateAsSelectDataSetup(new TrinoSqlExecutor(getQueryRunner(), session), tableNamePrefix);
     }
 
-    private DataSetup prestoCreateAndInsert(Session session, String tableNamePrefix)
+    private DataSetup trinoCreateAndInsert(Session session, String tableNamePrefix)
     {
         return new CreateAndInsertDataSetup(new TrinoSqlExecutor(getQueryRunner(), session), tableNamePrefix);
     }
