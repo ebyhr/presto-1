@@ -326,6 +326,23 @@ public class TestBigQueryIntegrationSmokeTest
         onBigQuery(format("DROP VIEW %s.%s", schemaName, viewName));
     }
 
+    @Test
+    public void testEscapeString()
+    {
+        String schemaName = "test";
+        String tableName = "test_escape_string";
+
+        onBigQuery(format("DROP TABLE IF EXISTS %s.%s", schemaName, tableName));
+        onBigQuery(format("CREATE TABLE %s.%s (key INT64, value STRING)", schemaName, tableName));
+        onBigQuery(format("INSERT INTO %s.%s VALUES (1, 'esc\\'ape')", schemaName, tableName));
+        onBigQuery(format("INSERT INTO %s.%s VALUES (2, 'esc\\\\\\'ape')", schemaName, tableName));
+
+        assertQuery(format("SELECT key FROM %s.%s WHERE value = 'esc''ape'", schemaName, tableName), "VALUES (1)");
+        assertQuery(format("SELECT key FROM %s.%s WHERE value = 'esc\\''ape'", schemaName, tableName), "VALUES (2)");
+
+        onBigQuery(format("DROP TABLE %s.%s", schemaName, tableName));
+    }
+
     @Override
     public void testShowCreateTable()
     {

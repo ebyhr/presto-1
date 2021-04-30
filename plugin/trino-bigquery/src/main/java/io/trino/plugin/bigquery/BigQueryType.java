@@ -179,7 +179,7 @@ public enum BigQueryType
     static String stringToStringConverter(Object value)
     {
         Slice slice = (Slice) value;
-        return quote(slice.toStringUtf8());
+        return quote(escape(slice.toStringUtf8()));
     }
 
     static String numericToStringConverter(Object value)
@@ -273,6 +273,13 @@ public enum BigQueryType
     private static String quote(String value)
     {
         return "'" + value + "'";
+    }
+
+    private static String escape(String value)
+    {
+        return value
+                .replace("\\", "\\\\")
+                .replace("'", "\\'");
     }
 
     String convertToString(Object value)
